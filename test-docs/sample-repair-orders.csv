@@ -1,0 +1,6 @@
+RO Number,Dealership,Date In,Date Out,Mileage In,Mileage Out,Days Down,Category,Customer Concern,Work Performed,Parts Replaced,Resolved
+RO-10234,Tesla Fremont Service,01/15/2024,01/18/2024,5200,5200,3,Electrical,Screen freezing and going black while driving,Replaced MCU and performed software update,MCU Unit,No
+RO-10456,Tesla Fremont Service,02/22/2024,02/28/2024,8500,8500,6,Battery,Range dropping significantly - only getting 180 miles,Battery diagnostic performed - cells showing degradation. Replaced battery pack,Battery Pack,No
+RO-10789,Tesla Burlingame,04/10/2024,04/15/2024,12000,12000,5,Electrical,Screen black again - same issue as before,Software reflash and MCU replacement under warranty,MCU Unit,No
+RO-11023,Tesla Fremont Service,05/20/2024,05/29/2024,15600,15600,9,Drivetrain,Grinding noise from front motor acceleration,Replaced front drive unit,Front Drive Unit,No
+RO-11245,Tesla Burlingame,07/08/2024,07/12/2024,19800,19800,4,Electrical,Touchscreen unresponsive - cannot use navigation or climate,Replaced touchscreen assembly and eMMC chip,Touchscreen Assembly,No

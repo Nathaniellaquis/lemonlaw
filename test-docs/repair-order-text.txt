@@ -1,0 +1,74 @@
+TESLA SERVICE CENTER
+REPAIR ORDER
+
+===============================================
+REPAIR ORDER #: RO-78234
+SERVICE CENTER: Tesla Fremont Service
+DATE IN: March 15, 2024
+DATE OUT: March 22, 2024
+===============================================
+
+CUSTOMER INFORMATION:
+Name: John Smith
+Phone: (415) 555-1234
+Email: jsmith@email.com
+
+VEHICLE INFORMATION:
+Year: 2023
+Make: Tesla
+Model: Model 3
+VIN: 5YJ3E1EA1NF123456
+Mileage In: 22,450
+Mileage Out: 22,450
+
+-----------------------------------------------
+CUSTOMER CONCERN:
+-----------------------------------------------
+Vehicle displays "Power Reduced" warning while driving on freeway.
+Car suddenly loses acceleration and nearly caused accident.
+This is the third time this has happened.
+
+-----------------------------------------------
+TECHNICIAN NOTES:
+-----------------------------------------------
+Diagnostic codes: DI_a180 - Drive inverter fault
+DI_a181 - Reduced power condition
+Performed high voltage system diagnostic
+Found fault in rear drive unit inverter
+Inverter showing intermittent communication errors
+
+-----------------------------------------------
+WORK PERFORMED:
+-----------------------------------------------
+- Full vehicle diagnostic scan
+- High voltage isolation test - PASSED
+- Drive unit inspection
+- Replaced rear drive unit assembly
+- Road test - 15 miles, no faults detected
+- Software update to version 2024.8.5
+
+-----------------------------------------------
+PARTS REPLACED:
+-----------------------------------------------
+Part Number         Description              Qty    Price
+1120990-00-E       Rear Drive Unit           1    $7,500.00
+                   Assembly
+1494176-00-A       Drive Unit Mounts         2      $185.00
+
+-----------------------------------------------
+LABOR: 6.5 hours @ $175/hr = $1,137.50
+PARTS TOTAL: $7,685.00
+TAX: $615.00
+-----------------------------------------------
+TOTAL: $9,437.50 (Covered under warranty)
+===============================================
+
+DAYS OUT OF SERVICE: 7
+
+Customer Signature: ________________  Date: 03/22/2024
+Service Advisor: Michael Torres       Date: 03/22/2024
+
+
+===============================================
+           CUSTOMER COPY - KEEP FOR RECORDS
+===============================================

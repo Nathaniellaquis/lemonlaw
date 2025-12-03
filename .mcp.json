@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "mongodb": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server@latest"
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "mongodb+srv://base-template:base-template-password@base-template.wvuokia.mongodb.net/?retryWrites=true&w=majority&appName=base-template",
+        "MDB_MCP_API_CLIENT_ID": "wndevmrk",
+        "MDB_MCP_API_CLIENT_SECRET": "72341b47-d0ed-44e5-a5a7-3cde5822d0df"
+      }
+    }
+  }
+}
