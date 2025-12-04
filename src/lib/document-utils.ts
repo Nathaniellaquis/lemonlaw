@@ -79,8 +79,8 @@ export function createParagraph(
     alignment: options?.centered
       ? AlignmentType.CENTER
       : options?.rightAlign
-      ? AlignmentType.RIGHT
-      : AlignmentType.JUSTIFIED,
+        ? AlignmentType.RIGHT
+        : AlignmentType.JUSTIFIED,
     indent: {
       left: options?.indent ? convertInchesToTwip(options.indent) : undefined,
       hanging: options?.hangingIndent ? convertInchesToTwip(options.hangingIndent) : undefined,
@@ -122,8 +122,8 @@ export function createMixedParagraph(
     alignment: options?.centered
       ? AlignmentType.CENTER
       : options?.justified !== false
-      ? AlignmentType.JUSTIFIED
-      : AlignmentType.LEFT,
+        ? AlignmentType.JUSTIFIED
+        : AlignmentType.LEFT,
     indent: {
       left: options?.indent ? convertInchesToTwip(options.indent) : undefined,
       firstLine: options?.firstLineIndent ? convertInchesToTwip(options.firstLineIndent) : undefined,
@@ -217,8 +217,8 @@ export function createCell(
           options?.align === "center"
             ? AlignmentType.CENTER
             : options?.align === "right"
-            ? AlignmentType.RIGHT
-            : AlignmentType.LEFT,
+              ? AlignmentType.RIGHT
+              : AlignmentType.LEFT,
         spacing: { after: 60, before: 60, line: 240 },
       }),
     ],
@@ -344,7 +344,7 @@ export function createAttorneyBlock(
   attorneyFor?: string
 ): Paragraph[] {
   const paragraphs: Paragraph[] = [];
-  
+
   // Attorney name and bar number
   paragraphs.push(new Paragraph({
     children: [
@@ -1017,8 +1017,8 @@ export function createProofOfService(
   const methodText = serveMethod === "mail"
     ? "by placing a true copy thereof enclosed in a sealed envelope with postage thereon fully prepaid, in the United States mail"
     : serveMethod === "electronic"
-    ? "by transmitting via electronic mail"
-    : "by personally delivering a true copy thereof";
+      ? "by transmitting via electronic mail"
+      : "by personally delivering a true copy thereof";
 
   paragraphs.push(new Paragraph({
     children: [
