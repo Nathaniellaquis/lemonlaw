@@ -1,4 +1,5 @@
-// Document generation utilities for California court-ready legal documents
+// California Court-Ready Legal Document Generation
+// Compliant with California Rules of Court, Rule 2.100-2.119
 import {
   Document,
   Paragraph,
@@ -12,23 +13,27 @@ import {
   convertInchesToTwip,
   PageNumber,
   Footer,
-  TabStopType,
-  TabStopPosition,
+  Header,
   HeadingLevel,
   UnderlineType,
   ITableCellBorders,
+  LineRuleType,
+  Tab,
+  TabStopType,
+  SectionType,
 } from "docx";
 
-// California court document standards
+// California Rules of Court formatting standards
 export const COURT_FORMATTING = {
   font: "Times New Roman",
   fontSize: 24, // 12pt in half-points
-  lineSpacing: 480, // Double-spaced (240 = single, 480 = double)
+  lineHeight: 480, // Double-spaced (24pt line height)
+  linesPerPage: 28,
   margins: {
     top: convertInchesToTwip(1),
     bottom: convertInchesToTwip(0.5),
-    left: convertInchesToTwip(1),
-    right: convertInchesToTwip(1),
+    left: convertInchesToTwip(1.5), // Extra for line numbers
+    right: convertInchesToTwip(0.5),
   },
 } as const;
 
@@ -40,7 +45,7 @@ const NO_BORDERS: ITableCellBorders = {
   right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
 };
 
-// Standard paragraph with court formatting
+// Standard court paragraph
 export function createParagraph(
   text: string,
   options?: {
@@ -52,9 +57,11 @@ export function createParagraph(
     rightAlign?: boolean;
     indent?: number;
     hangingIndent?: number;
+    firstLineIndent?: number;
     spacingAfter?: number;
     spacingBefore?: number;
     fontSize?: number;
+    singleSpaced?: boolean;
   }
 ): Paragraph {
   return new Paragraph({
@@ -77,16 +84,18 @@ export function createParagraph(
     indent: {
       left: options?.indent ? convertInchesToTwip(options.indent) : undefined,
       hanging: options?.hangingIndent ? convertInchesToTwip(options.hangingIndent) : undefined,
+      firstLine: options?.firstLineIndent ? convertInchesToTwip(options.firstLineIndent) : undefined,
     },
     spacing: {
-      line: COURT_FORMATTING.lineSpacing,
+      line: options?.singleSpaced ? 240 : COURT_FORMATTING.lineHeight,
+      lineRule: LineRuleType.AUTO,
       after: options?.spacingAfter ?? 0,
       before: options?.spacingBefore ?? 0,
     },
   });
 }
 
-// Create paragraph with multiple text runs (for mixed formatting)
+// Mixed formatting paragraph
 export function createMixedParagraph(
   runs: { text: string; bold?: boolean; italic?: boolean; underline?: boolean }[],
   options?: {
@@ -94,6 +103,8 @@ export function createMixedParagraph(
     indent?: number;
     spacingAfter?: number;
     justified?: boolean;
+    firstLineIndent?: number;
+    singleSpaced?: boolean;
   }
 ): Paragraph {
   return new Paragraph({
@@ -110,18 +121,22 @@ export function createMixedParagraph(
     ),
     alignment: options?.centered
       ? AlignmentType.CENTER
-      : options?.justified
+      : options?.justified !== false
       ? AlignmentType.JUSTIFIED
       : AlignmentType.LEFT,
-    indent: options?.indent ? { left: convertInchesToTwip(options.indent) } : undefined,
+    indent: {
+      left: options?.indent ? convertInchesToTwip(options.indent) : undefined,
+      firstLine: options?.firstLineIndent ? convertInchesToTwip(options.firstLineIndent) : undefined,
+    },
     spacing: {
-      line: COURT_FORMATTING.lineSpacing,
+      line: options?.singleSpaced ? 240 : COURT_FORMATTING.lineHeight,
+      lineRule: LineRuleType.AUTO,
       after: options?.spacingAfter ?? 0,
     },
   });
 }
 
-// Section heading - Roman numeral style for motions
+// Section heading - Roman numeral format for motions
 export function createHeading(text: string, level: 1 | 2 | 3 = 1): Paragraph {
   return new Paragraph({
     children: [
@@ -137,18 +152,19 @@ export function createHeading(text: string, level: 1 | 2 | 3 = 1): Paragraph {
     spacing: {
       before: 240,
       after: 240,
-      line: COURT_FORMATTING.lineSpacing,
+      line: COURT_FORMATTING.lineHeight,
+      lineRule: LineRuleType.AUTO,
     },
     heading: level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
   });
 }
 
-// Numbered paragraph (for legal arguments)
+// Numbered paragraph for legal arguments
 export function createNumberedParagraph(number: string, text: string, indent: number = 0.5): Paragraph {
   return new Paragraph({
     children: [
       new TextRun({
-        text: `${number}.\t`,
+        text: `${number}. `,
         font: COURT_FORMATTING.font,
         size: COURT_FORMATTING.fontSize,
         bold: true,
@@ -160,23 +176,18 @@ export function createNumberedParagraph(number: string, text: string, indent: nu
       }),
     ],
     spacing: {
-      line: COURT_FORMATTING.lineSpacing,
+      line: COURT_FORMATTING.lineHeight,
+      lineRule: LineRuleType.AUTO,
       after: 120,
     },
     indent: {
       left: convertInchesToTwip(indent),
       hanging: convertInchesToTwip(0.5),
     },
-    tabStops: [
-      {
-        type: TabStopType.LEFT,
-        position: TabStopPosition.MAX,
-      },
-    ],
   });
 }
 
-// Create table cell with proper formatting
+// Table cell with court formatting
 export function createCell(
   text: string,
   options?: {
@@ -187,6 +198,8 @@ export function createCell(
     fontSize?: number;
     noBorders?: boolean;
     verticalAlign?: "top" | "center" | "bottom";
+    rowSpan?: number;
+    colSpan?: number;
   }
 ): TableCell {
   return new TableCell({
@@ -196,7 +209,7 @@ export function createCell(
           new TextRun({
             text,
             font: COURT_FORMATTING.font,
-            size: options?.fontSize ?? 20, // 10pt for tables
+            size: options?.fontSize ?? 20,
             bold: options?.bold,
           }),
         ],
@@ -206,24 +219,24 @@ export function createCell(
             : options?.align === "right"
             ? AlignmentType.RIGHT
             : AlignmentType.LEFT,
-        spacing: { after: 60, before: 60 },
+        spacing: { after: 60, before: 60, line: 240 },
       }),
     ],
     width: options?.width ? { size: options.width, type: WidthType.PERCENTAGE } : undefined,
     shading: options?.shading ? { fill: options.shading } : undefined,
-    borders: options?.noBorders
-      ? NO_BORDERS
-      : {
-          top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-          left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-          right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-        },
+    borders: options?.noBorders ? NO_BORDERS : {
+      top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+    },
     verticalAlign: options?.verticalAlign === "center" ? "center" : options?.verticalAlign === "bottom" ? "bottom" : "top",
+    rowSpan: options?.rowSpan,
+    columnSpan: options?.colSpan,
   });
 }
 
-// Create a standard table with improved styling
+// Professional table with court styling
 export function createTable(
   headers: string[],
   rows: string[][],
@@ -235,7 +248,7 @@ export function createTable(
         bold: true,
         width: columnWidths?.[i],
         align: "center",
-        shading: "E8E8E8",
+        shading: "D9D9D9",
         fontSize: 20,
       })
     ),
@@ -243,12 +256,12 @@ export function createTable(
   });
 
   const dataRows = rows.map(
-    (row, rowIndex) =>
+    (row) =>
       new TableRow({
         children: row.map((cell, i) =>
           createCell(cell, {
             width: columnWidths?.[i],
-            shading: rowIndex % 2 === 1 ? "F8F8F8" : undefined,
+            fontSize: 18,
           })
         ),
       })
@@ -260,11 +273,11 @@ export function createTable(
   });
 }
 
-// Empty line
+// Empty line (double-spaced)
 export function createEmptyLine(): Paragraph {
   return new Paragraph({
     children: [],
-    spacing: { line: COURT_FORMATTING.lineSpacing },
+    spacing: { line: COURT_FORMATTING.lineHeight, lineRule: LineRuleType.AUTO },
   });
 }
 
@@ -276,7 +289,7 @@ export function createPageBreak(): Paragraph {
   });
 }
 
-// Exhibit header - professional styling
+// Exhibit header with professional styling
 export function createExhibitHeader(exhibitLetter: string, title: string): Paragraph[] {
   return [
     createPageBreak(),
@@ -285,95 +298,226 @@ export function createExhibitHeader(exhibitLetter: string, title: string): Parag
         new TextRun({
           text: `EXHIBIT ${exhibitLetter}`,
           font: COURT_FORMATTING.font,
-          size: 32, // 16pt
+          size: 32,
           bold: true,
         }),
       ],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-      border: {
-        bottom: { style: BorderStyle.DOUBLE, size: 6, color: "000000" },
-      },
+      spacing: { after: 200, line: 240 },
     }),
-    createEmptyLine(),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: "═".repeat(50),
+          font: COURT_FORMATTING.font,
+          size: 24,
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+    }),
     new Paragraph({
       children: [
         new TextRun({
           text: title,
           font: COURT_FORMATTING.font,
-          size: 28, // 14pt
+          size: 28,
           bold: true,
         }),
       ],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
+      spacing: { after: 400, line: 240 },
     }),
     createEmptyLine(),
   ];
 }
 
-// California court caption block - proper formatting
+// Attorney information block (top of pleading)
+export function createAttorneyBlock(
+  attorneyName: string,
+  barNumber: string,
+  firmName: string,
+  address: string[],
+  phone: string,
+  fax?: string,
+  email?: string,
+  attorneyFor?: string
+): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+  
+  // Attorney name and bar number
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `${attorneyName} (State Bar No. ${barNumber})`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: 240, after: 0 },
+  }));
+
+  // Firm name
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: firmName,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: 240, after: 0 },
+  }));
+
+  // Address lines
+  for (const line of address) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: line,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      spacing: { line: 240, after: 0 },
+    }));
+  }
+
+  // Phone
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `Telephone: ${phone}`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: 240, after: 0 },
+  }));
+
+  // Fax (if provided)
+  if (fax) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: `Facsimile: ${fax}`,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      spacing: { line: 240, after: 0 },
+    }));
+  }
+
+  // Email (if provided)
+  if (email) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: `Email: ${email}`,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      spacing: { line: 240, after: 0 },
+    }));
+  }
+
+  // Attorney for
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `Attorney for ${attorneyFor || "Plaintiff"}`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: 240, after: 0 },
+  }));
+
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+
+  return paragraphs;
+}
+
+// Court header (centered above caption)
+export function createCourtHeader(courtName: string, county: string, branchName?: string): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: courtName,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+    spacing: { line: 240, after: 0 },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `COUNTY OF ${county.toUpperCase()}`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+    spacing: { line: 240, after: 0 },
+  }));
+
+  if (branchName) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: branchName,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { line: 240, after: 0 },
+    }));
+  }
+
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+
+  return paragraphs;
+}
+
+// California-style caption block with proper formatting
 export function createCaptionBlock(
   caseNumber: string,
   plaintiff: string,
   defendant: string,
-  documentTitle: string,
-  courtName?: string,
-  county?: string
+  documentTitle: string
 ): (Paragraph | Table)[] {
-  const paragraphs: (Paragraph | Table)[] = [];
+  const elements: (Paragraph | Table)[] = [];
 
-  // Court name
-  if (courtName || county) {
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: courtName || "SUPERIOR COURT OF THE STATE OF CALIFORNIA",
-            font: COURT_FORMATTING.font,
-            size: COURT_FORMATTING.fontSize,
-            bold: true,
-          }),
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 0 },
-      })
-    );
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `FOR THE COUNTY OF ${(county || "LOS ANGELES").toUpperCase()}`,
-            font: COURT_FORMATTING.font,
-            size: COURT_FORMATTING.fontSize,
-            bold: true,
-          }),
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 },
-      })
-    );
-    paragraphs.push(createEmptyLine());
-  }
-
-  // Caption table - plaintiff v. defendant with case number on right
+  // Create caption table
   const captionTable = new Table({
     rows: [
       new TableRow({
         children: [
-          // Left side - parties
+          // Left column - parties
           new TableCell({
             children: [
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: plaintiff.toUpperCase(),
+                    text: plaintiff.toUpperCase() + ",",
                     font: COURT_FORMATTING.font,
                     size: COURT_FORMATTING.fontSize,
-                    bold: true,
                   }),
                 ],
-                spacing: { after: 120 },
+                spacing: { line: 240, after: 120 },
               }),
               new Paragraph({
                 children: [
@@ -383,30 +527,29 @@ export function createCaptionBlock(
                     size: COURT_FORMATTING.fontSize,
                   }),
                 ],
-                indent: { left: convertInchesToTwip(2) },
-                spacing: { after: 200 },
+                indent: { left: convertInchesToTwip(1.5) },
+                spacing: { line: 240, after: 120 },
               }),
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: "v.",
+                    text: "vs.",
                     font: COURT_FORMATTING.font,
                     size: COURT_FORMATTING.fontSize,
                   }),
                 ],
-                indent: { left: convertInchesToTwip(0.5) },
-                spacing: { after: 200 },
+                indent: { left: convertInchesToTwip(0.3) },
+                spacing: { line: 240, after: 120 },
               }),
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: defendant.toUpperCase(),
+                    text: defendant.toUpperCase() + ",",
                     font: COURT_FORMATTING.font,
                     size: COURT_FORMATTING.fontSize,
-                    bold: true,
                   }),
                 ],
-                spacing: { after: 120 },
+                spacing: { line: 240, after: 120 },
               }),
               new Paragraph({
                 children: [
@@ -416,25 +559,26 @@ export function createCaptionBlock(
                     size: COURT_FORMATTING.fontSize,
                   }),
                 ],
-                indent: { left: convertInchesToTwip(2) },
+                indent: { left: convertInchesToTwip(1.5) },
+                spacing: { line: 240 },
               }),
             ],
-            width: { size: 55, type: WidthType.PERCENTAGE },
+            width: { size: 50, type: WidthType.PERCENTAGE },
             borders: NO_BORDERS,
           }),
-          // Right side - case info
+          // Right column - case info with line border on left
           new TableCell({
             children: [
               new Paragraph({
                 children: [
                   new TextRun({
-                    text: `Case No. ${caseNumber}`,
+                    text: `Case No.: ${caseNumber}`,
                     font: COURT_FORMATTING.font,
                     size: COURT_FORMATTING.fontSize,
                     bold: true,
                   }),
                 ],
-                spacing: { after: 400 },
+                spacing: { line: 240, after: 240 },
               }),
               new Paragraph({
                 children: [
@@ -445,9 +589,21 @@ export function createCaptionBlock(
                     bold: true,
                   }),
                 ],
+                spacing: { line: 240, after: 120 },
+              }),
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: "[Song-Beverly Consumer Warranty Act]",
+                    font: COURT_FORMATTING.font,
+                    size: 20,
+                    italics: true,
+                  }),
+                ],
+                spacing: { line: 240 },
               }),
             ],
-            width: { size: 45, type: WidthType.PERCENTAGE },
+            width: { size: 50, type: WidthType.PERCENTAGE },
             borders: {
               ...NO_BORDERS,
               left: { style: BorderStyle.SINGLE, size: 12, color: "000000" },
@@ -460,106 +616,135 @@ export function createCaptionBlock(
     width: { size: 100, type: WidthType.PERCENTAGE },
   });
 
-  paragraphs.push(captionTable);
-  paragraphs.push(createEmptyLine());
-  paragraphs.push(createEmptyLine());
+  elements.push(captionTable);
+  elements.push(createEmptyLine());
+  elements.push(createEmptyLine());
 
-  return paragraphs;
+  return elements;
 }
 
-// Signature block - proper legal formatting
-export function createSignatureBlock(firmName?: string, attorneyName?: string, barNumber?: string): Paragraph[] {
+// Signature block with proper legal formatting
+export function createSignatureBlock(
+  firmName?: string,
+  attorneyName?: string,
+  barNumber?: string
+): Paragraph[] {
   const paragraphs: Paragraph[] = [];
 
   paragraphs.push(createEmptyLine());
   paragraphs.push(createEmptyLine());
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "Dated: " + formatDate(new Date()),
-          font: COURT_FORMATTING.font,
-          size: COURT_FORMATTING.fontSize,
-        }),
-      ],
-      tabStops: [{ type: TabStopType.LEFT, position: convertInchesToTwip(3.5) }],
-    })
-  );
-  paragraphs.push(createEmptyLine());
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "\t\t\t\t\tRespectfully submitted,",
-          font: COURT_FORMATTING.font,
-          size: COURT_FORMATTING.fontSize,
-        }),
-      ],
-    })
-  );
-  paragraphs.push(createEmptyLine());
-  paragraphs.push(createEmptyLine());
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: "\t\t\t\t\t_________________________________",
-          font: COURT_FORMATTING.font,
-          size: COURT_FORMATTING.fontSize,
-        }),
-      ],
-    })
-  );
 
+  // Dated line
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `Dated: ${formatDate(new Date())}`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 0 },
+  }));
+
+  paragraphs.push(createEmptyLine());
+
+  // Respectfully submitted (right-aligned block)
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "Respectfully submitted,",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: COURT_FORMATTING.lineHeight },
+  }));
+
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+
+  // Signature line
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "______________________________________",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: 240 },
+  }));
+
+  // Firm name
   if (firmName) {
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `\t\t\t\t\t${firmName}`,
-            font: COURT_FORMATTING.font,
-            size: COURT_FORMATTING.fontSize,
-            bold: true,
-          }),
-        ],
-      })
-    );
-  }
-
-  paragraphs.push(
-    new Paragraph({
+    paragraphs.push(new Paragraph({
       children: [
         new TextRun({
-          text: attorneyName ? `\t\t\t\t\t${attorneyName}` : "\t\t\t\t\tAttorney for Plaintiff",
+          text: firmName,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+          bold: true,
+        }),
+      ],
+      indent: { left: convertInchesToTwip(3.5) },
+      spacing: { line: 240 },
+    }));
+  }
+
+  // Attorney name
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: attorneyName || "[ATTORNEY NAME]",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: 240 },
+  }));
+
+  // Bar number
+  if (barNumber) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: `State Bar No. ${barNumber}`,
           font: COURT_FORMATTING.font,
           size: COURT_FORMATTING.fontSize,
         }),
       ],
-    })
-  );
-
-  if (barNumber) {
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `\t\t\t\t\tState Bar No. ${barNumber}`,
-            font: COURT_FORMATTING.font,
-            size: COURT_FORMATTING.fontSize,
-          }),
-        ],
-      })
-    );
+      indent: { left: convertInchesToTwip(3.5) },
+      spacing: { line: 240 },
+    }));
   }
+
+  // Attorney for Plaintiff
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "Attorneys for Plaintiff",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: 240 },
+  }));
 
   return paragraphs;
 }
 
-// Create court document with professional styling
+// Create court document with California standards
 export function createCourtDocument(
   sections: { children: (Paragraph | Table)[] }[]
 ): Document {
   return new Document({
+    creator: "LemonLaw AI",
+    title: "Legal Document",
     styles: {
       default: {
         document: {
@@ -569,7 +754,8 @@ export function createCourtDocument(
           },
           paragraph: {
             spacing: {
-              line: COURT_FORMATTING.lineSpacing,
+              line: COURT_FORMATTING.lineHeight,
+              lineRule: LineRuleType.AUTO,
             },
           },
         },
@@ -581,7 +767,7 @@ export function createCourtDocument(
           },
           paragraph: {
             alignment: AlignmentType.CENTER,
-            spacing: { before: 240, after: 240, line: COURT_FORMATTING.lineSpacing },
+            spacing: { before: 240, after: 240, line: COURT_FORMATTING.lineHeight },
           },
         },
         heading2: {
@@ -589,18 +775,20 @@ export function createCourtDocument(
             font: COURT_FORMATTING.font,
             size: COURT_FORMATTING.fontSize,
             bold: true,
+            underline: { type: UnderlineType.SINGLE },
           },
           paragraph: {
-            spacing: { before: 240, after: 120, line: COURT_FORMATTING.lineSpacing },
+            spacing: { before: 240, after: 120, line: COURT_FORMATTING.lineHeight },
           },
         },
       },
     },
-    sections: sections.map((section) => ({
+    sections: sections.map((section, index) => ({
       properties: {
         page: {
           margin: COURT_FORMATTING.margins,
         },
+        type: index === 0 ? undefined : SectionType.NEXT_PAGE,
       },
       children: section.children,
       footers: {
@@ -609,7 +797,7 @@ export function createCourtDocument(
             new Paragraph({
               children: [
                 new TextRun({
-                  children: [PageNumber.CURRENT],
+                  children: ["- ", PageNumber.CURRENT, " -"],
                   font: COURT_FORMATTING.font,
                   size: 20,
                 }),
@@ -632,9 +820,9 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-// Format date
+// Format date in legal format
 export function formatDate(date: string | Date): string {
-  if (!date) return "N/A";
+  if (!date) return "[DATE]";
   const d = typeof date === "string" ? new Date(date) : date;
   if (isNaN(d.getTime())) return String(date);
   return d.toLocaleDateString("en-US", {
@@ -676,13 +864,19 @@ export function createBulletPoint(text: string, indent: number = 0.5): Paragraph
   return new Paragraph({
     children: [
       new TextRun({
-        text: "•\t" + text,
+        text: "• ",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+      new TextRun({
+        text,
         font: COURT_FORMATTING.font,
         size: COURT_FORMATTING.fontSize,
       }),
     ],
     spacing: {
-      line: COURT_FORMATTING.lineSpacing,
+      line: COURT_FORMATTING.lineHeight,
+      lineRule: LineRuleType.AUTO,
       after: 60,
     },
     indent: {
@@ -692,7 +886,7 @@ export function createBulletPoint(text: string, indent: number = 0.5): Paragraph
   });
 }
 
-// Section with proper legal formatting
+// Legal section with proper formatting
 export function createLegalSection(
   romanNumeral: string,
   title: string,
@@ -700,39 +894,270 @@ export function createLegalSection(
 ): Paragraph[] {
   const paragraphs: Paragraph[] = [];
 
-  // Section heading
-  paragraphs.push(
+  // Section heading (centered, bold)
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `${romanNumeral}.`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 360, after: 0, line: COURT_FORMATTING.lineHeight },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: title,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+        underline: { type: UnderlineType.SINGLE },
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 240, line: COURT_FORMATTING.lineHeight },
+  }));
+
+  // Content paragraphs with first line indent
+  for (const paragraph of content) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: paragraph,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { line: COURT_FORMATTING.lineHeight, lineRule: LineRuleType.AUTO, after: 240 },
+      indent: { firstLine: convertInchesToTwip(0.5) },
+    }));
+  }
+
+  return paragraphs;
+}
+
+// Subsection heading (e.g., "A. Reasonableness of Hours")
+export function createSubsectionHeading(letter: string, title: string): Paragraph {
+  return new Paragraph({
+    children: [
+      new TextRun({
+        text: `${letter}. ${title}`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+        underline: { type: UnderlineType.SINGLE },
+      }),
+    ],
+    spacing: { before: 240, after: 120, line: COURT_FORMATTING.lineHeight },
+    indent: { left: convertInchesToTwip(0.5) },
+  });
+}
+
+// Citation paragraph (indented, for block quotes)
+export function createBlockQuote(text: string, citation: string): Paragraph[] {
+  return [
     new Paragraph({
       children: [
         new TextRun({
-          text: `${romanNumeral}. ${title}`,
+          text: `"${text}"`,
           font: COURT_FORMATTING.font,
           size: COURT_FORMATTING.fontSize,
-          bold: true,
+          italics: true,
         }),
       ],
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 360, after: 240, line: COURT_FORMATTING.lineSpacing },
-    })
-  );
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { line: 240, after: 0 }, // Single-spaced for block quotes
+      indent: { left: convertInchesToTwip(0.5), right: convertInchesToTwip(0.5) },
+    }),
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: citation,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      alignment: AlignmentType.RIGHT,
+      spacing: { line: 240, after: 240 },
+      indent: { right: convertInchesToTwip(0.5) },
+    }),
+  ];
+}
 
-  // Content paragraphs
-  for (const paragraph of content) {
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: paragraph,
-            font: COURT_FORMATTING.font,
-            size: COURT_FORMATTING.fontSize,
-          }),
-        ],
-        alignment: AlignmentType.JUSTIFIED,
-        spacing: { line: COURT_FORMATTING.lineSpacing, after: 240 },
-        indent: { firstLine: convertInchesToTwip(0.5) },
-      })
-    );
+// Proof of Service
+export function createProofOfService(
+  servedParty: string,
+  servedAddress: string[],
+  serveMethod: "mail" | "electronic" | "personal",
+  documentList: string[]
+): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+
+  paragraphs.push(createPageBreak());
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "PROOF OF SERVICE",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 240, line: COURT_FORMATTING.lineHeight },
+  }));
+
+  paragraphs.push(createEmptyLine());
+
+  const methodText = serveMethod === "mail"
+    ? "by placing a true copy thereof enclosed in a sealed envelope with postage thereon fully prepaid, in the United States mail"
+    : serveMethod === "electronic"
+    ? "by transmitting via electronic mail"
+    : "by personally delivering a true copy thereof";
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `STATE OF CALIFORNIA, COUNTY OF ________________`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 240 },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `I am employed in the County of ________________, State of California. I am over the age of eighteen (18) years and am not a party to the within action. My business address is ________________.`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 240 },
+    indent: { firstLine: convertInchesToTwip(0.5) },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `On ${formatDate(new Date())}, I served the foregoing document(s) described as:`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 120 },
+    indent: { firstLine: convertInchesToTwip(0.5) },
+  }));
+
+  for (const doc of documentList) {
+    paragraphs.push(createBulletPoint(doc, 0.75));
   }
+
+  paragraphs.push(createEmptyLine());
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `${methodText} to the following party(ies):`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 240 },
+    indent: { firstLine: convertInchesToTwip(0.5) },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: servedParty,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+        bold: true,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(1) },
+    spacing: { line: 240 },
+  }));
+
+  for (const line of servedAddress) {
+    paragraphs.push(new Paragraph({
+      children: [
+        new TextRun({
+          text: line,
+          font: COURT_FORMATTING.font,
+          size: COURT_FORMATTING.fontSize,
+        }),
+      ],
+      indent: { left: convertInchesToTwip(1) },
+      spacing: { line: 240 },
+    }));
+  }
+
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "I declare under penalty of perjury under the laws of the State of California that the foregoing is true and correct.",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    alignment: AlignmentType.JUSTIFIED,
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 240 },
+    indent: { firstLine: convertInchesToTwip(0.5) },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: `Executed on ${formatDate(new Date())}, at ________________, California.`,
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    spacing: { line: COURT_FORMATTING.lineHeight, after: 240 },
+    indent: { firstLine: convertInchesToTwip(0.5) },
+  }));
+
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+  paragraphs.push(createEmptyLine());
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "______________________________________",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: 240 },
+  }));
+
+  paragraphs.push(new Paragraph({
+    children: [
+      new TextRun({
+        text: "[Name of Declarant]",
+        font: COURT_FORMATTING.font,
+        size: COURT_FORMATTING.fontSize,
+      }),
+    ],
+    indent: { left: convertInchesToTwip(3.5) },
+    spacing: { line: 240 },
+  }));
 
   return paragraphs;
 }
