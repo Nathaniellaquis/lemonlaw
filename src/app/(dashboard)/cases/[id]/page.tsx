@@ -47,6 +47,7 @@ interface RepairOrder {
   dateIn?: string;
   dateOut?: string;
   mileageIn?: number;
+  mileageOut?: number;
   dealership?: string;
   customerConcern?: string;
   workPerformed?: string;
@@ -169,11 +170,65 @@ export default function CaseDetailPage() {
             )
           );
 
-          // Add to state
-          if (result.type === "repair_orders") {
-            setRepairOrders((prev) => [...prev, ...result.data]);
-          } else if (result.type === "billing") {
-            setBillingEntries((prev) => [...prev, ...result.data]);
+          // Save to database AND update local state
+          if (result.type === "repair_orders" && result.data.length > 0) {
+            // Save to database
+            const saveResponse = await fetch("/api/repair-orders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                caseId,
+                repairOrders: result.data.map((ro: RepairOrder) => ({
+                  roNumber: ro.roNumber || "",
+                  dealership: ro.dealership || "",
+                  dateIn: ro.dateIn || "",
+                  dateOut: ro.dateOut || "",
+                  mileageIn: ro.mileageIn || 0,
+                  mileageOut: ro.mileageOut || 0,
+                  daysDown: ro.daysDown || 0,
+                  category: ro.category || "Other",
+                  customerConcern: ro.customerConcern || "",
+                  workPerformed: ro.workPerformed || "",
+                  partsReplaced: ro.partsReplaced || "",
+                  resolved: ro.resolved || "No",
+                })),
+              }),
+            });
+
+            if (saveResponse.ok) {
+              // Refresh from database to get IDs
+              const freshData = await fetch(`/api/repair-orders?caseId=${caseId}`).then(r => r.json());
+              setRepairOrders(freshData || []);
+            } else {
+              // Fallback to local state only
+              setRepairOrders((prev) => [...prev, ...result.data]);
+            }
+          } else if (result.type === "billing" && result.data.length > 0) {
+            // Save to database
+            const saveResponse = await fetch("/api/billing", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                caseId,
+                billingEntries: result.data.map((b: BillingEntry) => ({
+                  date: b.date || "",
+                  attorney: b.attorney || "",
+                  hours: b.hours || 0,
+                  rate: b.rate || 0,
+                  description: b.description || "",
+                  type: "Billable",
+                })),
+              }),
+            });
+
+            if (saveResponse.ok) {
+              // Refresh from database to get IDs
+              const freshData = await fetch(`/api/billing?caseId=${caseId}`).then(r => r.json());
+              setBillingEntries(freshData || []);
+            } else {
+              // Fallback to local state only
+              setBillingEntries((prev) => [...prev, ...result.data]);
+            }
           }
 
           toast.success(`Extracted ${result.data.length} ${result.type === "repair_orders" ? "repair orders" : "billing entries"}`);
@@ -191,7 +246,7 @@ export default function CaseDetailPage() {
         toast.error(`Failed to process ${file.name}`);
       }
     }
-  }, []);
+  }, [caseId]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {

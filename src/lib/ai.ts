@@ -60,21 +60,28 @@ Your task is to extract repair order information from dealership service documen
 
 IMPORTANT: Extract ALL repair visits found in the document. Each time the vehicle was brought in for service is a separate repair order.
 
-For each repair visit, extract:
-- RO Number (repair order number, may be labeled as "RO#", "Work Order", "Invoice", etc.)
-- Dealership name
-- Date In (when vehicle was dropped off)
-- Date Out (when vehicle was picked up)
-- Mileage In
-- Mileage Out (if available)
-- Days Down (calculate from dates, or use provided value)
-- Customer Concern (the complaint - what the customer said was wrong)
-- Work Performed (what the dealership did)
-- Parts Replaced (list any parts)
-- Category (Engine, Transmission, Electrical, Suspension, Brakes, HVAC, or Other)
-- Resolved (Yes, No, or Partial - based on whether the issue was actually fixed)
+Return a JSON array where each object has EXACTLY these field names and formats:
+{
+  "roNumber": string or null,        // Repair order number (RO#, Work Order, Invoice, etc.)
+  "dealership": string or null,      // Dealership/service center name
+  "dateIn": "YYYY-MM-DD" or null,    // Date dropped off - MUST be ISO format (e.g., "2024-03-15")
+  "dateOut": "YYYY-MM-DD" or null,   // Date picked up - MUST be ISO format (e.g., "2024-03-22")
+  "mileageIn": number or null,       // Odometer at drop-off (integer, no commas)
+  "mileageOut": number or null,      // Odometer at pick-up (integer, no commas)
+  "daysDown": number or null,        // Days out of service (calculate from dates if not provided)
+  "customerConcern": string or null, // The complaint - what customer said was wrong
+  "workPerformed": string or null,   // What the dealership/technician did
+  "partsReplaced": string or null,   // List of parts replaced (comma-separated if multiple)
+  "category": string,                // MUST be one of: Engine, Transmission, Electrical, Suspension, Brakes, HVAC, Battery, Drivetrain, Software, Body, Other
+  "resolved": string                 // MUST be one of: Yes, No, Partial
+}
 
-Return a JSON array of objects. If a field is not found, use null.`;
+CRITICAL FORMAT RULES:
+- Dates MUST be converted to YYYY-MM-DD format (e.g., "March 15, 2024" → "2024-03-15", "01/15/2024" → "2024-01-15")
+- Mileage MUST be numbers without commas (e.g., "22,450" → 22450)
+- Category MUST be exactly one of the listed values
+- Resolved MUST be exactly "Yes", "No", or "Partial"
+- If a field cannot be determined, use null`;
 
   const response = await callAI([
     { role: "system", content: systemPrompt },
@@ -101,15 +108,22 @@ Return a JSON array of objects. If a field is not found, use null.`;
 export async function extractBillingEntries(text: string): Promise<ExtractedBillingEntry[]> {
   const systemPrompt = `You are extracting attorney billing records for a lemon law case.
 
-For each billing entry, extract:
-- Date (YYYY-MM-DD format)
-- Attorney name
-- Hours (decimal number)
-- Rate (hourly rate in dollars)
-- Description (what work was performed)
-- Type (Billable or Non-billable)
+Return a JSON array where each object has EXACTLY these field names and formats:
+{
+  "date": "YYYY-MM-DD" or null,  // Date of work - MUST be ISO format (e.g., "2024-01-20")
+  "attorney": string or null,    // Attorney/timekeeper name
+  "hours": number or null,       // Hours worked (decimal, e.g., 2.5)
+  "rate": number or null,        // Hourly rate (number only, no $ symbol, e.g., 650)
+  "description": string or null, // Description of work performed
+  "type": string                 // MUST be "Billable" or "Non-billable"
+}
 
-Return a JSON array of objects. If a field is not found, use null.`;
+CRITICAL FORMAT RULES:
+- Dates MUST be converted to YYYY-MM-DD format (e.g., "01/20/2024" → "2024-01-20")
+- Hours MUST be decimal numbers (e.g., 2.5, not "2:30" or "2h 30m")
+- Rate MUST be a number without $ or commas (e.g., 650, not "$650")
+- Type MUST be exactly "Billable" or "Non-billable"
+- If a field cannot be determined, use null`;
 
   const response = await callAI([
     { role: "system", content: systemPrompt },
@@ -135,22 +149,21 @@ Return a JSON array of objects. If a field is not found, use null.`;
 export async function extractCosts(text: string): Promise<ExtractedCost[]> {
   const systemPrompt = `You are extracting litigation costs for a lemon law case.
 
-For each cost entry, extract:
-- Date (YYYY-MM-DD format)
-- Description (what the cost was for)
-- Amount (in dollars)
-- Category (Filing, Service, Appearance, Expert, Deposition, or Other)
-- Vendor (who was paid)
+Return a JSON array where each object has EXACTLY these field names and formats:
+{
+  "date": "YYYY-MM-DD" or null,  // Date of expense - MUST be ISO format (e.g., "2024-01-20")
+  "description": string or null, // Description of what the cost was for
+  "amount": number or null,      // Amount (number only, no $ symbol, e.g., 435.00)
+  "category": string,            // MUST be one of: Filing, Service, Appearance, Expert, Deposition, Mediation, Transcript, Travel, Other
+  "vendor": string or null       // Who was paid
+}
 
-Common costs include:
-- Filing fees
-- Service of process fees
-- Court appearance fees
-- Expert witness fees
-- Deposition costs (court reporter, transcript, videographer)
-- Mediation fees
+CRITICAL FORMAT RULES:
+- Dates MUST be converted to YYYY-MM-DD format
+- Amount MUST be a number without $ or commas (e.g., 435.00, not "$435.00")
+- Category MUST be exactly one of the listed values
 
-Return a JSON array of objects. If a field is not found, use null.`;
+Common costs include filing fees, service of process fees, court appearance fees, expert witness fees, deposition costs (court reporter, transcript, videographer), and mediation fees.`;
 
   const response = await callAI([
     { role: "system", content: systemPrompt },
@@ -177,18 +190,28 @@ export async function extractFromImage(base64Image: string, mimeType: string): P
   const systemPrompt = `You are a legal document extraction specialist for California lemon law cases.
 Extract repair order information from this dealership service document image.
 
-For each repair visit visible, extract:
-- RO Number
-- Dealership name
-- Date In / Date Out
-- Mileage In / Mileage Out
-- Customer Concern
-- Work Performed
-- Parts Replaced
-- Category (Engine, Transmission, Electrical, Suspension, Brakes, HVAC, or Other)
-- Resolved (Yes, No, or Partial)
+Return a JSON array where each object has EXACTLY these field names and formats:
+{
+  "roNumber": string or null,        // Repair order number (RO#, Work Order, Invoice, etc.)
+  "dealership": string or null,      // Dealership/service center name
+  "dateIn": "YYYY-MM-DD" or null,    // Date dropped off - MUST be ISO format (e.g., "2024-03-15")
+  "dateOut": "YYYY-MM-DD" or null,   // Date picked up - MUST be ISO format (e.g., "2024-03-22")
+  "mileageIn": number or null,       // Odometer at drop-off (integer, no commas)
+  "mileageOut": number or null,      // Odometer at pick-up (integer, no commas)
+  "daysDown": number or null,        // Days out of service (calculate from dates if not provided)
+  "customerConcern": string or null, // The complaint - what customer said was wrong
+  "workPerformed": string or null,   // What the dealership/technician did
+  "partsReplaced": string or null,   // List of parts replaced (comma-separated if multiple)
+  "category": string,                // MUST be one of: Engine, Transmission, Electrical, Suspension, Brakes, HVAC, Battery, Drivetrain, Software, Body, Other
+  "resolved": string                 // MUST be one of: Yes, No, Partial
+}
 
-Return a JSON array of objects.`;
+CRITICAL FORMAT RULES:
+- Dates MUST be converted to YYYY-MM-DD format
+- Mileage MUST be numbers without commas
+- Category MUST be exactly one of the listed values
+- Resolved MUST be exactly "Yes", "No", or "Partial"
+- If a field cannot be determined, use null`;
 
   const response = await callAI([
     { role: "system", content: systemPrompt },
